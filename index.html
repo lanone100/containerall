@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>多箱型貨櫃裝載計算系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #2a3a55;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ff6b35;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #22c55e;
+    --radius: 12px;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-main: 'Noto Sans TC', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-main);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  .header {
+    background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 12px;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-inner { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.5px; }
+  .main { padding: 16px; max-width: 600px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: rgba(0,212,255,0.04); }
+  .card-header-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #000; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-mono); }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--accent); letter-spacing: 0.3px; }
+  .card-body { padding: 16px; }
+  label { display: block; font-size: 11px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 5px; }
+  input[type=number], select {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; font-family: var(--font-mono);
+    padding: 10px 12px; transition: border-color 0.2s;
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=number]:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.12); }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%2364748b'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 12px; }
+  .type-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+  .type-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; color: var(--muted); font-size: 11px; font-family: var(--font-mono); font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .type-btn.active { background: rgba(0,212,255,0.12); border-color: var(--accent); color: var(--accent); }
+  .dim-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+  .dim-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; text-align: center; }
+  .dim-label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; margin-bottom: 4px; }
+  .dim-val { font-size: 14px; font-family: var(--font-mono); color: var(--accent2); font-weight: 700; }
+  .box-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .box-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .box-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--accent2); }
+  .box-badge-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .btn-remove { background: rgba(255,107,53,0.12); border: 1px solid rgba(255,107,53,0.3); border-radius: 6px; color: var(--warn); font-size: 12px; padding: 4px 10px; cursor: pointer; font-family: var(--font-mono); transition: all 0.2s; }
+  .btn-remove:active { background: rgba(255,107,53,0.25); }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; font-family: var(--font-main); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, #0099cc 100%); color: #000; margin-bottom: 8px; box-shadow: 0 4px 20px rgba(0,212,255,0.3); }
+  .btn-primary:active { transform: scale(0.98); box-shadow: 0 2px 10px rgba(0,212,255,0.2); }
+  .btn-secondary { background: rgba(0,212,255,0.08); border: 1px solid var(--border); color: var(--accent); font-size: 13px; padding: 11px; }
+  .btn-print { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--success); font-size: 13px; padding: 11px; margin-top: 8px; }
+  .result-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .result-header { padding: 14px 16px; border-bottom: 1px solid var(--border); background: rgba(0,255,157,0.04); }
+  .result-title { font-size: 13px; font-weight: 700; color: var(--accent2); font-family: var(--font-mono); letter-spacing: 0.5px; text-transform: uppercase; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: var(--accent); line-height: 1.1; }
+  .stat-val.green { color: var(--accent2); }
+  .stat-val.orange { color: var(--warn); }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+  .progress-wrap { padding: 0 14px 14px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 6px; }
+  .progress-bg { background: var(--surface); border-radius: 4px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+  .result-table-wrap { padding: 0 14px 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .result-tbl { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 300px; }
+  .result-tbl th { background: var(--surface); color: var(--muted); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+  .result-tbl td { padding: 8px; border-bottom: 1px solid rgba(42,58,85,0.5); text-align: center; font-family: var(--font-mono); font-size: 12px; }
+  .result-tbl tr.total-row td { font-weight: 700; color: var(--accent2); border-bottom: none; border-top: 1px solid var(--border); }
+  .box-result { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 0 14px 10px; }
+  .box-result-title { font-size: 12px; font-weight: 700; font-family: var(--font-mono); margin-bottom: 8px; }
+  .box-result-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid rgba(42,58,85,0.4); }
+  .box-result-row:last-child { border-bottom: none; }
+  .box-result-key { color: var(--muted); font-family: var(--font-mono); }
+  .box-result-val { color: var(--text); font-family: var(--font-mono); font-weight: 700; }
+  /* FIX: CSS must NOT set width/height on canvas — JS controls that entirely */
+  .canvas-wrap { padding: 0 14px 14px; }
+  .canvas-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  canvas { display: block; border-radius: 8px; border: 1px solid var(--border); background: #0d1420; margin-bottom: 10px; max-width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .error-msg { background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.4); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; font-size: 13px; color: var(--warn); font-family: var(--font-mono); display: none; }
+  @media print {
+    body { background: #fff; color: #000; }
+    .header { position: static; }
+    .btn-primary, .btn-secondary, .btn-remove, .btn-print { display: none; }
+    canvas { border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo-icon">🚢</div>
+    <div>
+      <div class="header-title">多箱型貨櫃裝載計算系統</div>
+      <div class="header-sub">MULTI-BOX CONTAINER LOADING OPTIMIZER</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 1 貨櫃規格 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-num">1</div>
+      <div class="card-title">貨櫃規格設置</div>
+    </div>
+    <div class="card-body">
+      <label>貨櫃類型</label>
+      <div class="type-grid">
+        <div class="type-btn active" onclick="selectType('20GP',this)">20GP</div>
+        <div class="type-btn" onclick="selectType('40GP',this)">40GP</div>
+        <div class="type-btn" onclick="selectType('40HQ',this)">40HQ</div>
+        <div class="type-btn" onclick="selectType('45HQ',this)">45HQ</div>
+        <div class="type-btn" onclick="selectType('custom',this)">自訂</div>
+      </div>
+      <div class="dim-row">
+        <div class="dim-item"><div class="dim-label">長 (mm)</div><div class="dim-val" id="d-len">5898</div></div>
+        <div class="dim-item"><div class="dim-label">寬 (mm)</div><div class="dim-val" id="d-wid">2352</div></div>
+        <div class="dim-item"><div class="dim-label">高 (mm)</div><div class="dim-val" id="d-hei">2393</div></div>
+        <div class="dim-item"><div class="dim-label">載重 (kg)</div><div class="dim-val" id="d-wgt">28000</div></div>
+      </div>
+      <!-- Hidden inputs always hold canonical values for getContainer() -->
+      <input type="hidden" id="c-len" value="5898">
+      <input type="hidden" id="c-wid" value="2352">
+      <input type="hidden" id="c-hei" value="2393">
+      <input type="hidden" id="c-wgt" value="28000">
+      <div id="custom-fields" style="display:none; margin-top:14px;">
+        <div class="grid-2">
+          <div class="field"><label>長度 (mm)</label><input type="number" id="ci-len" value="5898" min="1" oninput="syncCustom()"></div>
+          <div class="field"><label>寬度 (mm)</label><input type="number" id="ci-wid" value="2352" min="1" oninput="syncCustom()"></div>
+          <div class="field"><label>高度 (mm)</label><input type="number" id="ci-hei" value="2393" min="1" oninput="syncCustom()"></div>
+          <div class="field"><label>最大載重 (kg)</label><input type="number" id="ci-wgt" value="28000" min="1" oninput="syncCustom()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 箱型資料 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-num">2</div>
+      <div class="card-title">成品箱資料</div>
+    </div>
+    <div class="card-body" style="padding-bottom:0;">
+      <div id="box-types"></div>
+      <div style="padding-bottom:16px;">
+        <button class="btn btn-secondary" onclick="addBoxType()">＋ 新增箱型</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- 3 計算 -->
+  <button class="btn btn-primary" onclick="calculate()">
+    <span>⚡</span> 計算最佳裝載方案
+  </button>
+
+  <!-- Results -->
+  <div id="results" style="display:none;">
+
+    <div class="result-card">
+      <div class="result-header"><div class="result-title">📊 裝載摘要</div></div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-val" id="res-total-boxes">—</div><div class="stat-label">總裝箱數</div></div>
+        <div class="stat-box"><div class="stat-val green" id="res-util">—</div><div class="stat-label">空間利用率</div></div>
+        <div class="stat-box"><div class="stat-val orange" id="res-weight">—</div><div class="stat-label">總重量 kg</div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>空間利用率</span><span id="res-util-txt">0%</span></div>
+        <div class="progress-bg"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-header"><div class="result-title">📦 各箱型裝載明細</div></div>
+      <div id="box-results" style="padding-top:10px;"></div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-header"><div class="result-title">📋 匯總表</div></div>
+      <div class="result-table-wrap">
+        <table class="result-tbl">
+          <thead><tr><th>箱型尺寸</th><th>裝入量</th><th>重量(kg)</th><th>體積(m³)</th><th>利用率</th></tr></thead>
+          <tbody id="summary-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-header"><div class="result-title">🗺️ 裝載示意圖</div></div>
+      <div class="canvas-wrap">
+        <div class="canvas-label">頂視圖（俯瞰 長×寬）</div>
+        <canvas id="top-view"></canvas>
+        <div class="canvas-label">側視圖（側面 長×高）</div>
+        <canvas id="side-view"></canvas>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <button class="btn btn-print" onclick="window.print()">🖨️ 列印報告</button>
+  </div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────
+const CONTAINER_PRESETS = {
+  '20GP': { length:5898,  width:2352, height:2393, weight:28000 },
+  '40GP': { length:12032, width:2352, height:2393, weight:30480 },
+  '40HQ': { length:12032, width:2352, height:2698, weight:30480 },
+  '45HQ': { length:13716, width:2352, height:2698, weight:32500 }
+};
+const COLORS = ['#00d4ff','#00ff9d','#ff6b35','#a78bfa','#fbbf24','#f472b6','#34d399','#60a5fa'];
+
+let currentType = '20GP';
+let boxSerial = 0; // monotonically increases; never reused → no id collisions after removes
+
+// ─── Container type selection ─────────────────────────────────
+function selectType(type, el) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentType = type;
+
+  if (type === 'custom') {
+    document.getElementById('custom-fields').style.display = 'block';
+    syncCustom();
+  } else {
+    document.getElementById('custom-fields').style.display = 'none';
+    const c = CONTAINER_PRESETS[type];
+    // FIX: write into hidden canonical inputs
+    document.getElementById('c-len').value = c.length;
+    document.getElementById('c-wid').value = c.width;
+    document.getElementById('c-hei').value = c.height;
+    document.getElementById('c-wgt').value = c.weight;
+    // Also pre-fill visible custom inputs so switching to "自訂" shows current values
+    document.getElementById('ci-len').value = c.length;
+    document.getElementById('ci-wid').value = c.width;
+    document.getElementById('ci-hei').value = c.height;
+    document.getElementById('ci-wgt').value = c.weight;
+    // Update display tiles
+    document.getElementById('d-len').textContent = c.length;
+    document.getElementById('d-wid').textContent = c.width;
+    document.getElementById('d-hei').textContent = c.height;
+    document.getElementById('d-wgt').textContent = c.weight;
+  }
+}
+
+// Sync visible custom inputs → hidden canonical inputs → display tiles
+function syncCustom() {
+  const len = document.getElementById('ci-len').value;
+  const wid = document.getElementById('ci-wid').value;
+  const hei = document.getElementById('ci-hei').value;
+  const wgt = document.getElementById('ci-wgt').value;
+  document.getElementById('c-len').value = len;
+  document.getElementById('c-wid').value = wid;
+  document.getElementById('c-hei').value = hei;
+  document.getElementById('c-wgt').value = wgt;
+  document.getElementById('d-len').textContent = len || '—';
+  document.getElementById('d-wid').textContent = wid || '—';
+  document.getElementById('d-hei').textContent = hei || '—';
+  document.getElementById('d-wgt').textContent = wgt || '—';
+}
+
+function getContainer() {
+  return {
+    length: parseInt(document.getElementById('c-len').value) || 0,
+    width:  parseInt(document.getElementById('c-wid').value) || 0,
+    height: parseInt(document.getElementById('c-hei').value) || 0,
+    weight: parseInt(document.getElementById('c-wgt').value) || 0
+  };
+}
+
+// ─── Box management ───────────────────────────────────────────
+function getBoxCount() {
+  return document.querySelectorAll('.box-card').length;
+}
+
+function addBoxType() {
+  boxSerial++;
+  const serial = boxSerial;
+  const wrap = document.getElementById('box-types');
+  const positionIdx = getBoxCount(); // color by insertion position
+  const color = COLORS[positionIdx % COLORS.length];
+
+  const div = document.createElement('div');
+  div.className = 'box-card';
+  div.dataset.serial = serial;
+  div.innerHTML = `
+    <div class="box-card-header">
+      <div class="box-badge">
+        <div class="box-badge-dot" style="background:${color}"></div>
+        <span class="box-label">箱型 ${positionIdx + 1}</span>
+      </div>
+      <button class="btn-remove" onclick="removeBox(this)">✕ 移除</button>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label>長度 (mm)</label><input type="number" class="bx-len" value="600" min="1"></div>
+      <div class="field"><label>寬度 (mm)</label><input type="number" class="bx-wid" value="400" min="1"></div>
+      <div class="field"><label>高度 (mm)</label><input type="number" class="bx-hei" value="400" min="1"></div>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label>重量 (kg)</label><input type="number" class="bx-wgt" value="15" min="0.01" step="0.01"></div>
+      <div class="field"><label>數量</label><input type="number" class="bx-qty" value="100" min="1"></div>
+      <div class="field"><label>允許翻轉</label>
+        <select class="bx-rot">
+          <option value="true">允許</option>
+          <option value="false">不允許</option>
+        </select>
+      </div>
+    </div>`;
+  wrap.appendChild(div);
+  refreshBoxMeta();
+}
+
+// FIX: Remove by DOM reference (button's closest card), not by serial id
+function removeBox(btn) {
+  if (getBoxCount() <= 1) { showError('至少需要保留一個箱型'); return; }
+  btn.closest('.box-card').remove();
+  refreshBoxMeta();
+}
+
+// Renumber labels, recolor dots, show/hide remove buttons after any add/remove
+function refreshBoxMeta() {
+  const cards = document.querySelectorAll('.box-card');
+  const total = cards.length;
+  cards.forEach((card, idx) => {
+    const lbl = card.querySelector('.box-label');
+    if (lbl) lbl.textContent = `箱型 ${idx + 1}`;
+    const dot = card.querySelector('.box-badge-dot');
+    if (dot) dot.style.background = COLORS[idx % COLORS.length];
+    // FIX: Hide remove button only when there is exactly 1 card
+    const rmBtn = card.querySelector('.btn-remove');
+    if (rmBtn) rmBtn.style.display = (total <= 1) ? 'none' : '';
+  });
+}
+
+function getBoxTypes() {
+  const boxes = [];
+  document.querySelectorAll('.box-card').forEach((div, idx) => {
+    const wgt = parseFloat(div.querySelector('.bx-wgt').value);
+    boxes.push({
+      id:       idx + 1,
+      color:    COLORS[idx % COLORS.length],
+      length:   parseInt(div.querySelector('.bx-len').value)   || 1,
+      width:    parseInt(div.querySelector('.bx-wid').value)   || 1,
+      height:   parseInt(div.querySelector('.bx-hei').value)   || 1,
+      weight:   (wgt > 0 ? wgt : 0.001), // FIX: guard against zero/NaN weight
+      quantity: parseInt(div.querySelector('.bx-qty').value)   || 0,
+      rotation: div.querySelector('.bx-rot').value === 'true'
+    });
+  });
+  return boxes;
+}
+
+// ─── Validation ───────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+  clearTimeout(showError._t);
+  showError._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function validate(c, boxes) {
+  if (c.length < 1 || c.width < 1 || c.height < 1 || c.weight < 1) {
+    showError('貨櫃尺寸與載重必須大於 0'); return false;
+  }
+  for (const bx of boxes) {
+    if (bx.length < 1 || bx.width < 1 || bx.height < 1) {
+      showError(`箱型 ${bx.id}：尺寸必須大於 0`); return false;
+    }
+    if (bx.quantity < 1) {
+      showError(`箱型 ${bx.id}：數量必須至少為 1`); return false;
+    }
+  }
+  return true;
+}
+
+// ─── Calculate ────────────────────────────────────────────────
+function calculate() {
+  document.getElementById('error-msg').style.display = 'none';
+  const container = getContainer();
+  const boxTypes  = getBoxTypes();
+  if (!validate(container, boxTypes)) return;
+
+  const cVol = (container.length * container.width * container.height) / 1e9;
+  if (cVol === 0) { showError('貨櫃體積為 0'); return; }
+
+  const result = calcOptimal(container, boxTypes, cVol);
+  if (result.results.length === 0) {
+    showError('所有箱型均無法放入此貨櫃（請確認尺寸是否超出貨櫃）'); return;
+  }
+
+  renderResults(result, container, cVol);
+  document.getElementById('results').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
+// ─── Core algorithm ───────────────────────────────────────────
+function calcOptimal(container, boxTypes, cVol) {
+  const results = [];
+  let totalWeight = 0, totalVolume = 0;
+
+  boxTypes.forEach(bx => {
+    const base = [
+      { l: bx.length, w: bx.width,  h: bx.height },
+      { l: bx.length, w: bx.height, h: bx.width  },
+      { l: bx.width,  w: bx.length, h: bx.height },
+      { l: bx.width,  w: bx.height, h: bx.length },
+      { l: bx.height, w: bx.length, h: bx.width  },
+      { l: bx.height, w: bx.width,  h: bx.length }
+    ];
+    // Deduplicate and filter if rotation not allowed
+    const seen = new Set();
+    const orientations = (bx.rotation ? base : [base[0]]).filter(o => {
+      const k = `${o.l},${o.w},${o.h}`;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+
+    let best = null, maxCount = 0, bestLayout = [];
+
+    orientations.forEach(o => {
+      if (o.l > container.length || o.w > container.width || o.h > container.height) return;
+      const lc = Math.floor(container.length / o.l);
+      const wc = Math.floor(container.width  / o.w);
+      const hc = Math.floor(container.height / o.h);
+      const cnt = lc * wc * hc;
+      if (cnt > maxCount) {
+        maxCount = cnt;
+        best = { l:o.l, w:o.w, h:o.h, lc, wc, hc };
+        bestLayout = [];
+        for (let li = 0; li < lc; li++)
+          for (let wi = 0; wi < wc; wi++)
+            for (let hi = 0; hi < hc; hi++)
+              bestLayout.push({ x: li * o.l, y: wi * o.w, z: hi * o.h });
+      }
+    });
+
+    if (!best || maxCount === 0) return;
+
+    let used = Math.min(maxCount, bx.quantity);
+    // FIX: Only apply weight check when bx.weight > 0 (already guarded above)
+    const remainCap = container.weight - totalWeight;
+    if (bx.weight * used > remainCap) {
+      used = Math.floor(remainCap / bx.weight);
+    }
+    if (used <= 0) return;
+
+    const vol = (bx.length * bx.width * bx.height * used) / 1e9;
+    totalWeight += bx.weight * used;
+    totalVolume += vol;
+    results.push({
+      bx, best,
+      count: used,
+      weight: bx.weight * used,
+      volume: vol,
+      layout: bestLayout.slice(0, used)
+    });
+  });
+
+  return { results, totalWeight, totalVolume, util: (totalVolume / cVol) * 100 };
+}
+
+// ─── Render results ───────────────────────────────────────────
+function renderResults(result, container, cVol) {
+  const totalBoxes = result.results.reduce((s, r) => s + r.count, 0);
+
+  document.getElementById('res-total-boxes').textContent = totalBoxes.toLocaleString();
+  document.getElementById('res-util').textContent     = result.util.toFixed(1) + '%';
+  document.getElementById('res-weight').textContent   = result.totalWeight.toFixed(0);
+  document.getElementById('res-util-txt').textContent = result.util.toFixed(1) + '%';
+  document.getElementById('progress-bar').style.width = Math.min(result.util, 100).toFixed(1) + '%';
+
+  // Per-box cards
+  const br = document.getElementById('box-results');
+  br.innerHTML = '';
+  result.results.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'box-result';
+    d.innerHTML = `
+      <div class="box-result-title" style="color:${r.bx.color}">
+        📦 箱型 ${r.bx.id}　${r.bx.length}×${r.bx.width}×${r.bx.height} mm
+      </div>
+      <div class="box-result-row"><span class="box-result-key">裝入數量</span><span class="box-result-val">${r.count} 箱（請求 ${r.bx.quantity}）</span></div>
+      <div class="box-result-row"><span class="box-result-key">總重量</span><span class="box-result-val">${r.weight.toFixed(1)} kg</span></div>
+      <div class="box-result-row"><span class="box-result-key">佔用體積</span><span class="box-result-val">${r.volume.toFixed(3)} m³</span></div>
+      <div class="box-result-row"><span class="box-result-key">最佳放置方向</span><span class="box-result-val">${r.best.l}×${r.best.w}×${r.best.h} mm</span></div>
+      <div class="box-result-row"><span class="box-result-key">排列（行×列×層）</span><span class="box-result-val">${r.best.lc}×${r.best.wc}×${r.best.hc}</span></div>`;
+    br.appendChild(d);
+  });
+
+  // Summary table — FIX: use .total-row class, not :last-child (which broke when only 1 data row)
+  const sb = document.getElementById('summary-body');
+  sb.innerHTML = '';
+  result.results.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.bx.length}×${r.bx.width}×${r.bx.height}</td><td>${r.count}</td><td>${r.weight.toFixed(0)}</td><td>${r.volume.toFixed(3)}</td><td>${(r.volume/cVol*100).toFixed(1)}%</td>`;
+    sb.appendChild(tr);
+  });
+  const tot = document.createElement('tr');
+  tot.className = 'total-row';
+  tot.innerHTML = `<td>總計</td><td>${totalBoxes}</td><td>${result.totalWeight.toFixed(0)}</td><td>${result.totalVolume.toFixed(3)}</td><td>${result.util.toFixed(1)}%</td>`;
+  sb.appendChild(tot);
+
+  // Legend
+  const leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  result.results.forEach(r => {
+    const li = document.createElement('div');
+    li.className = 'legend-item';
+    li.innerHTML = `<div class="legend-dot" style="background:${r.bx.color}"></div>箱型${r.bx.id} (${r.bx.length}×${r.bx.width}×${r.bx.height})`;
+    leg.appendChild(li);
+  });
+
+  // Draw after layout settles
+  requestAnimationFrame(() => drawViews(result.results, container));
+}
+
+// ─── Canvas drawing ───────────────────────────────────────────
+// FIX: JS owns canvas pixel dimensions entirely.
+// CSS only has max-width:100% — it NEVER sets width or height explicitly.
+function makeCanvas(id, containerDimA, containerDimB) {
+  const canvas = document.getElementById(id);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3× for memory safety
+  const availW = Math.max(canvas.parentElement.clientWidth - 28, 100);
+  const aspect = containerDimB / containerDimA;
+  const displayW = availW;
+  const displayH = Math.max(Math.round(displayW * aspect), 60); // FIX: min 60px height
+
+  canvas.width  = Math.round(displayW * dpr);
+  canvas.height = Math.round(displayH * dpr);
+  canvas.style.width  = displayW + 'px';
+  canvas.style.height = displayH + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // FIX: use setTransform instead of scale to avoid cumulative scaling on re-render
+  ctx.clearRect(0, 0, displayW, displayH);
+  return { ctx, W: displayW, H: displayH };
+}
+
+function drawView(canvasId, dimA, dimB, results, getBoxA, getBoxB, getBoxPosA, getBoxPosB) {
+  const PAD = 14;
+  const { ctx, W, H } = makeCanvas(canvasId, dimA, dimB);
+  const scA = (W - PAD * 2) / dimA;
+  const scB = (H - PAD * 2) / dimB;
+  const sc  = Math.min(scA, scB);
+
+  ctx.strokeStyle = '#4a6a8a'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(PAD, PAD, dimA * sc, dimB * sc);
+
+  results.forEach(r => {
+    ctx.fillStyle   = r.bx.color + '66';
+    ctx.strokeStyle = r.bx.color;
+    ctx.lineWidth   = 0.7;
+    r.layout.forEach(b => {
+      const bA = getBoxA(r.best);
+      const bB = getBoxB(r.best);
+      const pA = getBoxPosA(b);
+      const pB = getBoxPosB(b);
+      ctx.fillRect(PAD + pA * sc, PAD + pB * sc, bA * sc, bB * sc);
+      ctx.strokeRect(PAD + pA * sc, PAD + pB * sc, bA * sc, bB * sc);
+    });
+  });
+}
+
+function drawViews(results, c) {
+  // Top view: length (x) × width (y)
+  drawView('top-view',  c.length, c.width,
+    results,
+    best => best.l, best => best.w,
+    b => b.x, b => b.y);
+
+  // Side view: length (x) × height (z)
+  drawView('side-view', c.length, c.height,
+    results,
+    best => best.l, best => best.h,
+    b => b.x, b => b.z);
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+addBoxType();
+refreshBoxMeta();
+</script>
+</body>
+</html>
